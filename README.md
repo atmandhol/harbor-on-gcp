@@ -12,7 +12,7 @@
 export GCP_PROJECT=adhol-playground
 
 ## May replace
-export VM_NAME=harbor-vm1
+export VM_NAME=harbor-vm
 export MACHINE_TYPE=e2-medium
 export GCP_ZONE=us-central1-a
 ```
@@ -32,7 +32,7 @@ gcloud compute instances create $VM_NAME \
 --reservation-affinity=any \
 --tags=https-server \
 --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
---create-disk=auto-delete=yes,boot=yes,device-name=$VM_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20220615,mode=rw,size=100 \
+--create-disk=auto-delete=yes,boot=yes,device-name=$VM_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20220615,mode=rw,size=100
 ```
 
 ### Bootstrapping
@@ -49,11 +49,13 @@ sudo apt-get update
 sudo apt-get upgrade -y
 sudo apt install docker.io python3-pip nginx jq docker-compose -y
 openssl version
+
 ```
 
 * Make sure nothing is running on Port 80. Run the following to stop nginx service
 ```bash
 sudo service nginx stop
+
 ```
 
 ### Download Harbor
@@ -63,7 +65,8 @@ export HARBOR_VERSION=v2.5.1
 
 wget https://github.com/goharbor/harbor/releases/download/$HARBOR_VERSION/harbor-online-installer-$HARBOR_VERSION.tgz
 
-tar xzvf harbor-online-installer-$HARBOR_VERSION.tgz 
+tar xzvf harbor-online-installer-$HARBOR_VERSION.tgz
+
 ```
 
 ### HTTPS Setup
@@ -125,6 +128,7 @@ sudo systemctl restart docker
 
 sudo cp $HOST_NAME.crt /usr/local/share/ca-certificates/$HOST_NAME.crt 
 sudo update-ca-certificates
+
 ```
 
 ### Update harbor.yaml
@@ -191,9 +195,9 @@ EOF
 ### Install harbor
 
 ```bash
-sudo . harbor/install.sh 
+(cd harbor/ ; sudo ./install.sh)
 ```
 
 ### Useful Links Section
-[Harbor docs | Configure HTTPS Access to Harbor](https://goharbor.io/docs/2.1.0/install-config/configure-https/)
-[Self Signed Certificate vs CA Certificate — The Differences Explained](https://sectigostore.com/page/self-signed-certificate-vs-ca/)
+- [Harbor docs | Configure HTTPS Access to Harbor](https://goharbor.io/docs/2.1.0/install-config/configure-https/)
+- [Self Signed Certificate vs CA Certificate — The Differences Explained](https://sectigostore.com/page/self-signed-certificate-vs-ca/)
