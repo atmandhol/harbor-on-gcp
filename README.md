@@ -114,12 +114,15 @@ openssl x509 -req -sha512 -days 3650 \
     -in $HOST_NAME.csr \
     -out $HOST_NAME.crt
 
-
+sudo mkdir -p /data
+sudo mkdir -p /data/cert
 sudo cp $HOST_NAME.crt /data/cert/
 sudo cp $HOST_NAME.key /data/cert/
 
 openssl x509 -inform PEM -in $HOST_NAME.crt -out $HOST_NAME.cert
 
+sudo mkdir -p /etc/docker/certs.d
+sudo mkdir -p /etc/docker/certs.d/$HOST_NAME/
 sudo cp $HOST_NAME.cert /etc/docker/certs.d/$HOST_NAME/
 sudo cp $HOST_NAME.key /etc/docker/certs.d/$HOST_NAME/
 sudo cp ca.crt /etc/docker/certs.d/$HOST_NAME/
