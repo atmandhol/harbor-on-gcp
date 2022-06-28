@@ -220,9 +220,81 @@ security add-trusted-cert -r trustRoot -k $HOME/Library/Keychains/login.keychain
 
 ## Setup GKE cluster
 
-* Create a GKE cluster from the UI or `gcloud` CLI or using `tappr`
+* Create a GKE cluster from the UI or `gcloud` CLI or using [`tappr`](https://github.com/atmandhol/tappr)
 
-* Use the [instructions in this repo](https://github.com/samos123/gke-node-ca-importer) to install your custom cert on the GKE nodes.
+* Create a docker image that has myCA.pem, copies the myCA.pem into /mnt/etc/ssl/certs/, runs update-ca-certificates and restart docker daemon.
+
+```
+cat <<EOF > /tmp/insert-ca.sh
+
+#!/bin/bash
+cp /myCA.pem /mnt/etc/ssl/certs
+nsenter --target 1 --mount update-ca-certificates
+nsenter --target 1 --mount bash -c "systemctl is-active --quiet docker && echo 'Restarting docker' && systemctl restart docker"
+nsenter --target 1 --mount bash -c "systemctl is-active --quiet containerd && echo 'Restarting containerd' && systemctl restart containerd"
+# NOTE: After the CRI restarts subsequent logs may not be visible, however the subsequent commands should
+# still have run. You can verify with something like:
+# touch /mnt/etc/completed.txt
+echo "complete"
+EOF
+
+chmod 700 /tmp/insert-ca.sh
+
+cat <<EOF > /tmp/Dockerfile
+FROM ubuntu
+COPY ~/Downloads/$HARBOR_HOST_NAME.crt /myCA.pem
+COPY insert-ca.sh /usr/sbin/
+
+CMD insert-ca.sh
+EOF
+
+docker build -t gcr.io/$GCP_PROJECT/custom-cert /tmp/Dockerfile
+docker push gcr.io/$GCP_PROJECT/custom-cert
+
+```
+
+* Create a Daemon set
+
+```bash
+cat <<EOF | k apply -f -
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cert-customizations
+  labels:
+    app: cert-customizations
+spec:
+  selector:
+    matchLabels:
+      app: cert-customizations
+  template:
+    metadata:
+      labels:
+        app: cert-customizations
+    spec:
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+      - name: cert-customizations
+        image: gcr.io/$GCP_PROJECT/custom-cert
+        volumeMounts:
+          - name: etc
+            mountPath: "/mnt/etc"
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN"]
+      volumes:
+      - name: etc
+        hostPath:
+          path: /etc
+      containers:
+      - name: pause
+        image: gcr.io/google_containers/pause
+EOF
+```
+
+The instructions to set certs using Daemonset were taken [from this repo](https://github.com/samos123/gke-node-ca-importer).
 
 
 ## TAP Installation using this registry
