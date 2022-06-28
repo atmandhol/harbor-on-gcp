@@ -201,7 +201,7 @@ EOF
 (cd harbor/ ; sudo ./install.sh)
 ```
 
-## Copy Self Signed Cert and CA cert from the Harbor VM to your Downloads folder
+### Copy Self Signed Cert and CA cert from the Harbor VM to your Downloads folder
 
 ```bash
 export HARBOR_HOST_NAME=$(gcloud compute instances list --filter="$VM_NAME" --format "get(networkInterfaces[0].accessConfigs[0].natIP)").nip.io
@@ -209,13 +209,73 @@ gcloud compute scp $VM_NAME:~/$HARBOR_HOST_NAME.crt $VM_NAME:~/ca.crt ~/Download
 
 ```
 
-## (macOS only) Add the Certs to Keychain
+### (macOS only) Add the Certs to Keychain
 ```bash
 security add-trusted-cert -r trustRoot -k $HOME/Library/Keychains/login.keychain ~/Downloads/ca.crt
 security add-trusted-cert -r trustRoot -k $HOME/Library/Keychains/login.keychain ~/Downloads/$HARBOR_HOST_NAME.crt
 
 ```
 * Go to Keychain and manually trust the cert for your domain name
+
+
+## Setup GKE cluster
+
+* Create a GKE cluster from the UI or `gcloud` CLI or using `tappr`
+
+* Use the [instructions in this repo](https://github.com/samos123/gke-node-ca-importer) to install your custom cert on the GKE nodes.
+
+
+## TAP Installation using this registry
+Here is a sample tap-values file that will work with self signed registry
+```yaml
+appliveview_connector:
+  backend:
+    host: appliveview.127.0.0.1.nip.io
+    sslDisabled: 'true'
+buildservice:
+  descriptor_name: full
+  enable_automatic_dependency_updates: true
+  kp_default_repository: $HARBOR_HOST_NAME/tap/tbs-ss
+  kp_default_repository_secret:
+    name: registry-credentials-tbs
+    namespace: tap-install
+  tanzunet_secret:
+    name: tanzunet-registry-creds-tbs
+    namespace: tap-install
+  ca_cert_data: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+
+ceip_policy_disclosed: true
+cnrs:
+  # Replace this with the domain name
+  domain_name: 127.0.0.1.nip.io
+contour:
+  envoy:
+    service:
+      type: LoadBalancer
+metadata_store:
+  app_service_type: NodePort
+ootb_supply_chain_basic:
+  gitops:
+    ssh_secret: ''
+  registry:
+    repository: tap/supplychain-ss
+    server: $HARBOR_HOST_NAME
+    ca_cert_data: |
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+profile: iterate
+supply_chain: basic
+shared:
+  # TODO: use the shared ingress domain
+  ca_cert_data: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+```
 
 ### Useful Links Section
 - [Harbor docs | Configure HTTPS Access to Harbor](https://goharbor.io/docs/2.1.0/install-config/configure-https/)
