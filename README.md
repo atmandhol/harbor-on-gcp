@@ -131,7 +131,7 @@ sudo update-ca-certificates
 
 ```
 
-### Update harbor.yaml
+### Update harbor.yml
 ```bash
 cat <<EOF > harbor/harbor.yml
 hostname: $HOST_NAME
@@ -192,11 +192,27 @@ upload_purging:
 EOF
 ```
 
-### Install harbor
+### Install and Start Harbor
 
 ```bash
 (cd harbor/ ; sudo ./install.sh)
 ```
+
+## Copy Self Signed Cert and CA cert from the Harbor VM to your Downloads folder
+
+```bash
+export HARBOR_HOST_NAME=$(gcloud compute instances list --filter="$VM_NAME" --format "get(networkInterfaces[0].accessConfigs[0].natIP)").nip.io
+gcloud compute scp $VM_NAME:~/$HARBOR_HOST_NAME.crt $VM_NAME:~/ca.crt ~/Downloads/ --zone=$GCP_ZONE
+
+```
+
+## (macOS only) Add the Certs to Keychain
+```bash
+security add-trusted-cert -r trustRoot -k $HOME/Library/Keychains/login.keychain ~/Downloads/ca.crt
+security add-trusted-cert -r trustRoot -k $HOME/Library/Keychains/login.keychain ~/Downloads/$HARBOR_HOST_NAME.crt
+
+```
+* Go to Keychain and manually trust the cert for your domain name
 
 ### Useful Links Section
 - [Harbor docs | Configure HTTPS Access to Harbor](https://goharbor.io/docs/2.1.0/install-config/configure-https/)
